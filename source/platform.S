@@ -1,6 +1,6 @@
 	;INCLUDE semaphore.h
 	#include "config.h"
-	#include "spinlock.h"
+	#include "lock_share.h"
 
 	PRESERVE8
 	AREA 	PLATFORM,CODE,READONLY
@@ -20,10 +20,10 @@
 
 	MACRO
 $label	SPIN_LOCK
-	MOV	R2, #__SPIN_LOCKED		;
+	MOV	R2, #__LOCKED		;
 $label.retry
 	LDREX	R1, [R0]		; load the lock value
-	CMP	R1, #__SPIN_UNLOCKED	; is the lock free?
+	CMP	R1, #__UNLOCKED	; is the lock free?
 	ITT	EQ			; IT instruction for STREXEQ and CMPEQ
 	STREXEQ	R1, R2, [r0]		; try and claim the lock
 	CMPEQ	R1, #0			; did this succeed?
@@ -34,12 +34,20 @@ $label.retry
 	
 	MACRO
 	SPIN_UNLOCK
-	MOV	R2, #__SPIN_UNLOCKED
+	MOV	R2, #__UNLOCKED
 	STR	R2, [R0]
 	DMB
 	MEND
 ;MACRO END
 
+;context BEGIN
+SCB_ICSR
+	DCD	0XE000ED04
+SCB_ICSR_PENDSVSET
+	DCD	(1<<28)
+MSP_BASE	
+	DCD	ISR_STACK_BASE
+;context END
 
 ;FUNCTIONS BEGIN
 spin_lock	FUNCTION
@@ -73,11 +81,11 @@ spin_unlock_irqrestore	FUNCTION
 
 mutex_lock	FUNCTION
 	export mutex_lock
-	MOV	R2, #__SPIN_LOCKED
+	MOV	R2, #__LOCKED
 ml_retry
 	LDREX	R1, [R0]		; load the lock value
-	CMP	R1, #__SPIN_UNLOCKED	; is the lock free?
-	BNE	ml_sch		; wait resource ready by call scheduler
+	CMP	R1, #__UNLOCKED		; is the lock free?
+	BNE	ml_sch			; wait resource ready by call scheduler
 	ITT	EQ			; IT instruction for STREXEQ and CMPEQ
 	STREXEQ	R1, R2, [r0]		; try and claim the lock
 	CMPEQ	R1, #0			; did this succeed?
@@ -93,7 +101,7 @@ ml_sch
 	
 mutex_unlock	FUNCTION
 	export mutex_unlock
-	MOV	R2, #__SPIN_UNLOCKED
+	MOV	R2, #__UNLOCKED
 	STR	R2, [R0]
 	DSB
 	;notify resource ready
@@ -112,7 +120,8 @@ si_retry
 	DMB
 	BX	LR
 	ENDFUNC
-	
+
+
 semaphore_dec	FUNCTION
 	export semaphore_dec
 sd_retry
@@ -130,36 +139,39 @@ sd_sch
 	B	sd_retry
 	ENDFUNC
 
-	IMPORT	next_task
-PendSV_Handler	FUNCTION
-	export	PendSV_Handler
-	;check EXC_RETURN if return stack is PSP?
-	TST	LR, #4
-BUG
-	BEQ	BUG	;main stack mode
-	;process stack mode
-	;save user space registers(context)
-	MRS	R0, PSP
-	STMDB	R0!, {R4-R11}
-	MSR	PSP, R0
-	;flush cache
+__scheduler	FUNCTION
+	export	__scheduler
+	LDR	R0, =SCB_ICSR
+	LDR	R1, [R0]
+	LDR	R0, =SCB_ICSR_PENDSVSET
+	LDR	R2, [R0]
+	STR	R2, [R1]
 	DSB
-	;save LR
-	STMFD	SP!, {LR}
-	;call task select & task switch
-	BL	next_task	;function next_task() return SP of new task
-	;restore LR
-	LDMFD	SP!, {LR}
-	;restore context
-	;MRS	R0, PSP
-	LDMIA	R0!, {R4-R11}
-	MSR	PSP, R0
-	;clear PENDSV, it may set by preemption interrupt
-	BX	LR
+	BX	LR	
 	ENDFUNC
 
-MSP_BASE	
-	DCD	ISR_STACK_BASE
+scheduler_pause	FUNCTION
+	export	scheduler_pause
+	MOV	R0, #CONFIG_BASE_PRIORITY
+	MOV	R0, R0, LSL#4	;STM32 uses 4 Bits for the Priority Levels
+	MSR	BASEPRI, R0
+	DSB
+	ISB
+	MRS	R0, BASEPRI
+	BX	LR
+	;NOP
+	ENDFUNC
+scheduler_continue	FUNCTION
+	export	scheduler_continue
+	MOV	R0, #0
+	MSR	BASEPRI, R0
+	DSB
+	ISB
+	MRS	R0, BASEPRI
+	BX	LR
+	;NOP
+	ENDFUNC
+	
 ;this function should be called by main() only
 scheduler_start	FUNCTION
 	EXPORT	scheduler_start
@@ -197,5 +209,40 @@ COPY_END
 	BX	LR
 	;NOP
 	ENDFUNC
+
+
+	IMPORT	next_task
+PendSV_Handler	FUNCTION
+	export	PendSV_Handler
+	;check EXC_RETURN if return stack is PSP?
+	TST	LR, #4
+BUG
+	BEQ	BUG	;main stack mode
+	;process stack mode
+	;save user space registers(context)
+	MRS	R0, PSP
+	STMDB	R0!, {R4-R11}
+	MSR	PSP, R0
+	;flush cache
+	DSB
+	;save LR
+	STMFD	SP!, {LR}
+	;call task select & task switch
+	BL	next_task	;function next_task() return SP of new task
+	;restore LR
+	LDMFD	SP!, {LR}
+	;restore context
+	;MRS	R0, PSP
+	LDMIA	R0!, {R4-R11}
+	MSR	PSP, R0
+	;clear PENDSV, it may set by preemption interrupt
+	BX	LR
+	ENDFUNC
+
+
+
+
+
+
 
 	END	;end of file

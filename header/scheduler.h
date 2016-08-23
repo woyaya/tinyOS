@@ -18,6 +18,7 @@ typedef enum{
 typedef struct{
 	stack_frame_t *frame;
 	void *sp;
+	uint32_t priority;
 	task_func_t task;
 	struct list_head list;
 	struct list_head time;
@@ -38,8 +39,13 @@ static inline void __attribute__((always_inline)) scheduler_start(void *psp)
 #endif 
 extern void *next_task(void *curr_sp);
 extern void *scheduler_initial(void);
+extern void __scheduler(void);
 extern void scheduler_start(void *);
-extern void task_creat(task_t *task, void *stack, uint32_t stack_size, task_func_t func, void *param);
+extern void scheduler_pause(void);
+extern void scheduler_continue(void);
+extern void task_creat(task_t *task, void *stack, uint32_t stack_size, 
+		uint32_t priority,
+		task_func_t func, void *param);
 
 #ifdef __cplusplus
 }

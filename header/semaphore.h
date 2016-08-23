@@ -1,21 +1,24 @@
 #ifndef __SEMAPHORE_H__
 #define __SEMAPHORE_H__
 
-#include "spinlock.h"
+#include "lock_share.h"
+#include "list.h"
 #ifdef __cplusplus
  extern "C" {
 #endif 
 
 typedef enum{
-	SPINLOCK_LOCKED = __SPIN_LOCKED,
-	SPINLOCK_UNLOCKED = __SPIN_UNLOCKED,
-}spinlock_t __attribute__((aligned (4)));
-typedef enum{
-	MUTEX_LOCKED = __SPIN_LOCKED,
-	MUTEX_UNLOCKED = __SPIN_UNLOCKED,
+	LOCKED = __LOCKED,
+	UNLOCKED = __UNLOCKED,
+}lock_e __attribute__((aligned (4)));
+typedef lock_e spinlock_t;
+typedef struct{
+	lock_e lock;
+	struct list_head list;
 }mutex_t __attribute__((aligned (4)));
 typedef struct{
 	int count;
+	struct list_head list;
 }semaphore_t;
 
 extern void spin_lock_init(spinlock_t *lock);

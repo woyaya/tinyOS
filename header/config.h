@@ -7,8 +7,15 @@
   #define IRAM_SIZE	0x00005000
 #endif
 
-//#define CONFIG_PENDSV_PRIORITY		0xff
-#define CONFIG_PENDSV_PRIORITY		0x12
+#define CONFIG_PENDSV_PRIORITY		0x0F
+#define CONFIG_SYSTICK_PRIORITY		0x0E
+/*The processor does not process any exception 
+ *with a priority value greater than or equal to BASEPRI.
+ *Any exception handler which may access task list, 
+ *should set greater or equal priority then CONFIG_BASE_PRIORITY */
+#define CONFIG_BASE_PRIORITY		0x08
+
+#define CONFIG_SYSTICK_PERIOD		10	//mS
 
 #define TASK_STACK_SIZE_MIN	(0x80 * sizeof(uint32_t))
 

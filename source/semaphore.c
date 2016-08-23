@@ -4,15 +4,17 @@
 
 void spin_lock_init(spinlock_t *lock)
 {
-	*lock = SPINLOCK_UNLOCKED;
+	*lock = UNLOCKED;
 }
 void mutex_init(mutex_t *mutex)
 {
-	*mutex = MUTEX_UNLOCKED;
+	mutex->lock = UNLOCKED;
+	INIT_LIST_HEAD(&mutex->list);
 }
 void semaphore_init(semaphore_t *sem, int count)
 {
 	sem->count = count;
+	INIT_LIST_HEAD(&sem->list);
 }
 
 #if 0
@@ -23,10 +25,10 @@ static void spin_lock(spinlock_t *lock)
 #if 0
 	__asm__ volatile(
 		"ldr r0, %0\n"
-		"ldr r1, $SPINLOCK_LOCKED\n"
+		"ldr r1, $LOCKED\n"
 	"retry_lock:\n"
 		"ldrex r2, [r0]\n"
-		"cmp r2, $SPINLOCK_LOCKED\n"
+		"cmp r2, $LOCKED\n"
 		"itt ne\n"
 		"strexne r2, r1, [r0]\n"
 		"cmpne r2, $0\n"
@@ -40,9 +42,9 @@ static void spin_lock(spinlock_t *lock)
 	while(1)
 	{
 		val = (spinlock_t)__LDREXW(lock);
-		if (SPINLOCK_UNLOCKED == val)
+		if (UNLOCKED == val)
 		{
-			int ret = __STREXW(SPINLOCK_LOCKED, lock);
+			int ret = __STREXW(LOCKED, lock);
 			if (0 == ret)	//success
 				break;
 		}
@@ -57,7 +59,7 @@ static void spin_unlock(spinlock_t *lock)
 	while(1)
 	{
 		val = (spinlock_t)__LDREXW(lock);
-		ret = __STREXW(SPINLOCK_UNLOCKED, lock);
+		ret = __STREXW(UNLOCKED, lock);
 		if (0 == ret)	//success
 			break;
 	}

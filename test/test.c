@@ -17,8 +17,19 @@ int main()
 		if (++count & 0x7)
 			__NOP();
 		else
-			__rise_scheduler();
+		{
+			__scheduler();
+			
+		}
 		__NOP();
+		
+		if (count == 0x20)
+		{
+			__SEV();
+			scheduler_pause();
+		}
+		if (count == 0x41)
+			scheduler_continue();
 	}
 	
 	return 0;
