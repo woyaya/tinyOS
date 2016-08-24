@@ -18,10 +18,16 @@ typedef enum{
 typedef struct{
 	stack_frame_t *frame;
 	void *sp;
-	uint32_t priority;
+	
 	task_func_t task;
-	struct list_head list;
-	struct list_head time;
+	
+	uint32_t priority;
+	uint64_t timeout;
+	union{
+		struct list_head list;	
+		struct list_head time;
+	};
+	
 	struct list_head event;
 }task_t;
 #if 0
@@ -37,8 +43,13 @@ static inline void __attribute__((always_inline)) scheduler_start(void *psp)
 	__DSB();
 }
 #endif 
+
+extern void sleep(uint32_t s);
+extern void msleep(uint32_t ms);
+
 extern void *next_task(void *curr_sp);
 extern void *scheduler_initial(void);
+extern void scheduler(task_state_t new_state);
 extern void __scheduler(void);
 extern void scheduler_start(void *);
 extern void scheduler_pause(void);

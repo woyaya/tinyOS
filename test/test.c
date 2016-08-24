@@ -18,18 +18,13 @@ int main()
 			__NOP();
 		else
 		{
-			__scheduler();
+			scheduler(TASK_READY);
 			
 		}
 		__NOP();
+		if (0x20 == count)
+			sleep(1);
 		
-		if (count == 0x20)
-		{
-			__SEV();
-			scheduler_pause();
-		}
-		if (count == 0x41)
-			scheduler_continue();
 	}
 	
 	return 0;
