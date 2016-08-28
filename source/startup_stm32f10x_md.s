@@ -30,13 +30,13 @@
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
-IRAM_BASE      	EQU	0x20000000
-IRAM_SIZE	EQU	0x00005000
+#include "config.h"
+
 Stack_Size      EQU     0x00000400
 
                 AREA    STACK, NOINIT, READWRITE, ALIGN=3
 ;Stack_Mem       SPACE   Stack_Size
-__initial_sp	EQU	IRAM_BASE+IRAM_SIZE
+__initial_sp	EQU	CONFIG_IRAM_BASE+CONFIG_IRAM_SIZE
 
 ; <h> Heap Configuration
 ;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
