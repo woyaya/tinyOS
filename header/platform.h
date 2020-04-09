@@ -14,6 +14,10 @@ typedef struct{
 	uint32_t R9;
 	uint32_t R10;
 	uint32_t R11;
+
+//Following registers auto-saved @ exception
+//In subroutine calls, 'BL' just put $PC to $LR, 
+//all other registers should be saved by manual
 	uint32_t R0;
 	uint32_t R1;
 	uint32_t R2;
